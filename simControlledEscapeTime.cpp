@@ -46,7 +46,16 @@ double xC = -0.443780476044467;
 double yC = -0.545824753793719;
 
 // desired escape time
-double Tesc_desired = 13.0; // the uncontrolled escape time for D=1/30 is about 5.7s
+double Tesc_desired = 18.0; // the uncontrolled escape time for D=1/30 is about 5.7s
+
+// action change polynomial coeffiecients
+// delta_R = Ac^2 + Bc
+double dR_A = 4.226961989800957;
+double dR_B = 0.687951969966634;
+
+// control param limits
+double c_max = 0.5;
+double c_min = -0.5;
 
 //================================
 // phase space boundaries
@@ -219,20 +228,20 @@ int main(int argc, char *argv[]){
     // set sigma value for this run
     double sigma = sqrt(2*D);
     
-    cout << "computing paths for noise level D = 1/"<<( round(1/D) ) << endl; 
+    cout << "computing paths for noise level D = 1/"<< retTruncDbl( round(1/D),0 ) << endl; 
     cout << "number of threads used " << nThreads << endl;
     
     vector<parallelPathSolver> pathSolverVect;
     
     // setup solvers
     for( int i=0; i<nThreads; i++){
-        pathSolverVect.push_back( parallelPathSolver(i,nHashBins,xmin,xmax,ymin,ymax,dt) );
+        pathSolverVect.push_back( parallelPathSolver(i,nHashBins,xmin,xmax,ymin,ymax,dt,D,c_max,c_min) );
     }
     
     // start solver threads on solvers
     vector<int> nPathCmplt(nThreads,0);
     for( int i=0; i<nThreads; i++){
-        pathSolverVect[i].startThread(pathsPerSolver, x0, y0, t0, sdeIntegrator, sigma, xC, yC, r, DG_flow_control, g, getHashBinNumber, &nPathCmplt[i], Tesc_desired, s);
+        pathSolverVect[i].startThread(pathsPerSolver, x0, y0, t0, sdeIntegrator, sigma, xC, yC, r, DG_flow_control, g, getHashBinNumber, &nPathCmplt[i], Tesc_desired, s, dR_A, dR_B);
     }
     
     this_thread::sleep_for(chrono::milliseconds(100));
@@ -285,20 +294,20 @@ int main(int argc, char *argv[]){
     
     // save histogram data
     ofstream histDataOut;
-    histDataOut.open("histData_nLevel_1_"+to_string( round(1/D) )+".txt", ofstream::out | ofstream::trunc);
+    histDataOut.open("histData_nLevel_1_"+retTruncDbl( round(1/D),0 )+".txt", ofstream::out | ofstream::trunc);
     for (int i=0; i<histData.size(); i++)
         histDataOut << histData[i] << endl;
 
     histDataOut.close();
     
-    //// save escape time data
-    //ofstream escapeTimeOut;
-    //escapeTimeOut.open("escapeTimes_nLevel_1_"+to_string( round(1/D) )+".txt", ofstream::out|ofstream::trunc);
-    //for(int i=0; i<nThreads; i++)
-    //    for(int j=0; j<pathSolverVect[i].escapeTime.size(); j++)
-    //        escapeTimeOut << pathSolverVect[i].escapeTime[j] << endl;
-    //
-    //escapeTimeOut.close();
+    // save escape time data
+    ofstream escapeTimeOut;
+    escapeTimeOut.open("escapeTimes_nLevel_1_"+retTruncDbl( round(1/D), 0 )+".txt", ofstream::out|ofstream::trunc);
+    for(int i=0; i<nThreads; i++)
+        for(int j=0; j<pathSolverVect[i].escapeTime.size(); j++)
+            escapeTimeOut << pathSolverVect[i].escapeTime[j] << endl;
+    
+    escapeTimeOut.close();
     
     //// save control effort data
     //ofstream ctrlEffOut;
@@ -324,6 +333,7 @@ int main(int argc, char *argv[]){
     cout << "\tdata saving complete" << endl;
     cout << "\tStats : " << endl;
     cout << "\t\tNumber of paths computed        : " << totalPaths << endl;
+    cout << "\t\tAverage time to escape          : " << avgEscapeTime << endl;
 
     cout << "Total running time : " << ( time(NULL)-stTime ) << "s" << endl;
     avgInfoOut.close();

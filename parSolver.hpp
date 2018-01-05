@@ -36,6 +36,12 @@ class parallelPathSolver{
     // time step
     double dt;
 
+    // noise intensity
+    double D;
+    
+    // allowable control limits
+    double c_max, c_min;
+
     // placeholder variables
     double t, xn, yn, escapeT, vX, vY;
     int pInd;
@@ -50,20 +56,21 @@ class parallelPathSolver{
     // thread for solving
     thread th;
 
-    parallelPathSolver(int nSolver, int nBins, double xL, double xH, double yL, double yH, double timeStep) : 
+    parallelPathSolver(int nSolver, int nBins, double xL, double xH, double yL, double yH, double timeStep, double D_, double c_max_, double c_min_) : 
         solverID(nSolver), 
         histData(nBins,0), 
         xmin(xL), xmax(xH), ymin(yL), ymax(yH),
-        dt(timeStep)
+        dt(timeStep),
+        D(D_), c_max(c_max_), c_min(c_min_)
     { }
 
-    void runPaths (int nPaths, double x0, double y0, double t0, sdeIntegratorType sdeIntegrator, double sigma, double xC, double yC, gsl_rng *r, dVec f(double, dVec, double), dVec g(double, dVec), int hBinFnc(double, double), int *nPathsCmplt, double T_des, double gyre_width);
+    void runPaths (int nPaths, double x0, double y0, double t0, sdeIntegratorType sdeIntegrator, double sigma, double xC, double yC, gsl_rng *r, dVec f(double, dVec, double), dVec g(double, dVec), int hBinFnc(double, double), int *nPathsCmplt, double T_des, double gyre_width, double dR_A, double dR_B);
 
-    void startThread(int nPaths, double x0, double y0, double t0, sdeIntegratorType sdeIntegrator, double sigma, double xC, double yC, gsl_rng *r, dVec f(double, dVec, double), dVec g(double, dVec), int hBinFnc(double, double), int *nPathsCmplt, double T_des, double gyre_width);
+    void startThread(int nPaths, double x0, double y0, double t0, sdeIntegratorType sdeIntegrator, double sigma, double xC, double yC, gsl_rng *r, dVec f(double, dVec, double), dVec g(double, dVec), int hBinFnc(double, double), int *nPathsCmplt, double T_des, double gyre_width, double dR_A, double dR_B);
     
     void joinThread();
     double computeDist2Boundary(double, double);
-    double computeControlParam(double, double, double, double);
+    double computeControlParam(double, double, double, double, double, double);
 };
 
 #endif
