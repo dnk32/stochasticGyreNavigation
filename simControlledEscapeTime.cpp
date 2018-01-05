@@ -39,7 +39,7 @@ int nPaths = 1000;
 double dt = 0.0001;
 
 // noise intensity
-double D = 1/30.0;
+double D = 1/50.0;
 
 // gyre centre
 double xC = -0.443780476044467;
