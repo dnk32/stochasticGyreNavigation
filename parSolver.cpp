@@ -149,16 +149,18 @@ double parallelPathSolver::computeDist2Boundary(double x, double y){
 double parallelPathSolver::computeControlParam(double dist2Boundary, double gyre_width, double t_des, double t_current, double dR_A, double dR_B){
 
     double s = gyre_width/2;
-    double lambda = 15/16.0;  // (1-lambda) is the fraction of time the final transit takes to go from 1/8th the gyre width to boundary
-    if ( dist2Boundary > gyre_width/8 && t_current < lambda*t_des )
+    double lambda_s = 0.25;
+    double lambda_t = 15/16.0;  // (1-lambda) is the fraction of time the final transit takes to go from  lambda_s*s to boundary
+    double dR_ratio = 200;
+    if ( dist2Boundary > lambda_s*s && t_current < lambda_t*t_des )
         return 0.0;
-    if ( dist2Boundary < gyre_width/8 && t_current > lambda*t_des )
+    if ( dist2Boundary < lambda_s*s && t_current > lambda_t*t_des )
         return 0.0;
-    if ( dist2Boundary >= gyre_width/8 && t_current >= lambda*t_des )
+    if ( dist2Boundary >= lambda_s*s && t_current >= lambda_t*t_des )
         return c_max;
     else{ // dist < g_w/8 && t_cur < lambda*t_des
-        double predicted_t_4_esc = t_current/( 1 - (1-lambda)*8*dist2Boundary/gyre_width );
-        double dR = D*log( t_des/predicted_t_4_esc )*200;
+        double predicted_t_4_esc = t_current/( 1 - (1-lambda_t)*dist2Boundary/(lambda_s*s) );
+        double dR = D*log( t_des/predicted_t_4_esc )*dR_ratio;
         return ( dR_B - sqrt( dR_B*dR_B + 4*dR_A*dR ) )/(2*dR_A);
     }
 }
