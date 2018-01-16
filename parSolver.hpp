@@ -70,7 +70,7 @@ class parallelPathSolver{
     
     void joinThread();
     double computeDist2Boundary(double, double);
-    double computeControlParam(double, double, double, double, double, double);
+    double computeControlParam(double, double, double, double, double, double, double, double);
 };
 
 #endif

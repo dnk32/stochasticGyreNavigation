@@ -21,11 +21,13 @@ void parallelPathSolver::runPaths (int nPaths, double x0, double y0, double t0, 
     ctrlEffort.clear();
     noiseEffort.clear();
 
+    ofstream pathSave; bool savedOnePath = false;
     ofstream tCurrOut, dist2BndryOut, contParamOut;
     if (nPaths ==1 ){
         tCurrOut.open("tCurr"+to_string(solverID)+".txt", ofstream::out|ofstream::trunc);
         dist2BndryOut.open("dist2Bnry"+to_string(solverID)+".txt", ofstream::out|ofstream::trunc);
         contParamOut.open("contParam"+to_string(solverID)+".txt", ofstream::out|ofstream::trunc);
+        pathSave.open("Path"+to_string(solverID)+".txt", ofstream::out | ofstream::trunc );
     }
     while(true){
         
@@ -55,6 +57,13 @@ void parallelPathSolver::runPaths (int nPaths, double x0, double y0, double t0, 
         double controlParam = 0.0;
         double dist2Boundary = 0.0;
 
+        // tracking if threshold has been crossed
+        bool threshCrossed = false; 
+        double thresholdTime = 0.0;
+        double lambda_thresh = 0.6;
+        vector<double> contPar_all;
+        contPar_all.clear();
+        contPar_all.push_back(0.0);
         while (true){
             // update position
             // current 
@@ -88,23 +97,38 @@ void parallelPathSolver::runPaths (int nPaths, double x0, double y0, double t0, 
             pInd++;
 
             dist2Boundary = computeDist2Boundary(xn,yn);
-            controlParam = computeControlParam(dist2Boundary, gyre_width, T_des, t, dR_A, dR_B);
-            
+            if (!threshCrossed && dist2Boundary < gyre_width/2*lambda_thresh){
+                threshCrossed = true;
+                thresholdTime = t;
+            }
+            if ( dist2Boundary > gyre_width/2*lambda_thresh)
+                threshCrossed = false;
+            controlParam = computeControlParam(dist2Boundary, gyre_width, T_des, t, dR_A, dR_B,thresholdTime, lambda_thresh);
+            contPar_all.push_back(controlParam);
             if( nPaths == 1){
                 tCurrOut << t << endl;
                 dist2BndryOut << dist2Boundary << endl;
                 contParamOut << controlParam << endl;
+                pathSave << xn << " " << yn << " " << t << endl;
             }
         }
         // update hitogram if escape happens from right boundary
         if (escapeRight){
-            //ofstream pathSave;
-            //pathSave.open("Solver"+to_string(solverID)+"_Path"+to_string(pathCnt)+".txt", ofstream::out | ofstream::trunc );
-            //for (int k=pInd; k>=0; k--){
-            for (int k=pInd; k>=pInd*0.9; k--){
+            if (!savedOnePath && t < 10.0){
+                dist2BndryOut.open("dist2Bnry"+to_string(solverID)+".txt", ofstream::out|ofstream::trunc);
+                contParamOut.open("contParam"+to_string(solverID)+".txt", ofstream::out|ofstream::trunc);
+                pathSave.open("Path"+to_string(solverID)+".txt", ofstream::out | ofstream::trunc );
+            }
+            for (int k=pInd; k>=0; k--){
+            //for (int k=pInd; k>=pInd*0.9; k--){
                 hashBin = getHashBinNumber(X[k], Y[k]);
                 histData[hashBin] = histData[hashBin] + 1;
-                //pathSave << X[k] << " " << Y[k] << endl;
+                if (!savedOnePath && t < 10.0){
+                    pathSave << X[k] << " " << Y[k] << " " << T[k] << endl;
+                    dist2Boundary = computeDist2Boundary(X[k],Y[k]);
+                    contParamOut << contPar_all[k] << endl;
+                    dist2BndryOut << dist2Boundary << endl;
+                }
             }
             // log time of escape
             escapeTime.push_back(t);
@@ -112,7 +136,12 @@ void parallelPathSolver::runPaths (int nPaths, double x0, double y0, double t0, 
             noiseEffort.push_back(noiseCost);
             pathCnt++;
             *nPathsCmplt = pathCnt;
-            //pathSave.close();
+            if (!savedOnePath && t < 10.0){
+                pathSave.close();
+                dist2BndryOut.close();
+                contParamOut.close();
+                savedOnePath = true;
+            }
         }
         iterCnt++;
         if(pathCnt==nPaths)
@@ -146,22 +175,33 @@ double parallelPathSolver::computeDist2Boundary(double x, double y){
     return minDist;
 }
             
-double parallelPathSolver::computeControlParam(double dist2Boundary, double gyre_width, double t_des, double t_current, double dR_A, double dR_B){
+double parallelPathSolver::computeControlParam(double dist2Boundary, double gyre_width, double t_des, double t_current, double dR_A, double dR_B, double t_thresh, double lambda_thresh){
 
     double s = gyre_width/2;
-    double lambda_s = 0.25;
+    double lambda_s = 0.85;
     double lambda_t = 15/16.0;  // (1-lambda) is the fraction of time the final transit takes to go from  lambda_s*s to boundary
-    double dR_ratio = 200;
+    double dR_ratio = 400;
     if ( dist2Boundary > lambda_s*s && t_current < lambda_t*t_des )
         return 0.0;
     if ( dist2Boundary < lambda_s*s && t_current > lambda_t*t_des )
-        return 0.0;
-    if ( dist2Boundary >= lambda_s*s && t_current >= lambda_t*t_des )
-        return c_max;
+        return c_max;//0.0;
+    if ( dist2Boundary >= lambda_s*s && t_current >= lambda_t*t_des ){
+        if( t_des < 30)   
+            return c_max;
+        else
+            return 0.0;
+    }
     else{ // dist < g_w/8 && t_cur < lambda*t_des
         double predicted_t_4_esc = t_current/( 1 - (1-lambda_t)*dist2Boundary/(lambda_s*s) );
+        //double predicted_t_4_esc = ( lambda_thresh*t_current - lambda_s*t_thresh)/(lambda_thresh - lambda_s);
+        if (predicted_t_4_esc > t_des)
+            return 0.0;
         double dR = D*log( t_des/predicted_t_4_esc )*dR_ratio;
-        return ( dR_B - sqrt( dR_B*dR_B + 4*dR_A*dR ) )/(2*dR_A);
+        double contPar =  ( dR_B - sqrt( dR_B*dR_B + 4*dR_A*dR ) )/(2*dR_A);
+        if (isnan(contPar) )
+            double dummyParam = 1;
+        return (contPar<c_min)?c_min:contPar;
+        //return contPar;
     }
 }
 
