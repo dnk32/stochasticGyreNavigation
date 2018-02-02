@@ -63,6 +63,10 @@ double dR_B = 0.687951969966634;
 double c_max = 0.5;
 double c_min = -0.5;
 
+// control switch params
+double lambda_s = 0.2;
+double lambda_t = 0.9;
+
 // gyre centre
 double xC = -0.443780476044467;
 double yC = -0.545824753793719;
@@ -256,7 +260,7 @@ int main(int argc, char *argv[]){
             
             // initialize each path solver object
             for( int i=0; i<nThreads; i++){
-                pathSolverVect.push_back( parallelPathSolver(i,nHashBins,xmin,xmax,ymin,ymax,dt,D,c_max,c_min) );
+                pathSolverVect.push_back( parallelPathSolver(i,nHashBins,xmin,xmax,ymin,ymax,dt,D,c_max,c_min, lambda_s, lambda_t) );
             }
             
             // start solver threads on solver objects

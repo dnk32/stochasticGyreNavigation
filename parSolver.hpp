@@ -42,6 +42,9 @@ class parallelPathSolver{
     // allowable control limits
     double c_max, c_min;
 
+    // control switch params
+    double lambda_s, lambda_t;
+
     // placeholder variables
     double t, xn, yn, escapeT, vX, vY;
     int pInd;
@@ -56,12 +59,13 @@ class parallelPathSolver{
     // thread for solving
     thread th;
 
-    parallelPathSolver(int nSolver, int nBins, double xL, double xH, double yL, double yH, double timeStep, double D_, double c_max_, double c_min_) : 
+    parallelPathSolver(int nSolver, int nBins, double xL, double xH, double yL, double yH, double timeStep, double D_, double c_max_, double c_min_, double lambda_s_, double lambda_t_) : 
         solverID(nSolver), 
         histData(nBins,0), 
         xmin(xL), xmax(xH), ymin(yL), ymax(yH),
         dt(timeStep),
-        D(D_), c_max(c_max_), c_min(c_min_)
+        D(D_), c_max(c_max_), c_min(c_min_),
+        lambda_s(lambda_s_), lambda_t(lambda_t_)
     { }
 
     void runPaths (int nPaths, double x0, double y0, double t0, sdeIntegratorType sdeIntegrator, double sigma, double xC, double yC, gsl_rng *r, dVec f(double, dVec, double), dVec g(double, dVec), int hBinFnc(double, double), int *nPathsCmplt, double T_des, double gyre_width, double dR_A, double dR_B);

@@ -89,8 +89,6 @@ void parallelPathSolver::runPaths (int nPaths, double x0, double y0, double t0, 
                 
             // update time
             t += dt;
-            cntrlCost += 0.0; 
-            noiseCost += 0.5*( eta_x*eta_x + eta_y*eta_y )*dt;
             X.push_back(xn);
             Y.push_back(yn);
             T.push_back(t);
@@ -105,6 +103,10 @@ void parallelPathSolver::runPaths (int nPaths, double x0, double y0, double t0, 
                 threshCrossed = false;
             controlParam = computeControlParam(dist2Boundary, gyre_width, T_des, t, dR_A, dR_B,thresholdTime, lambda_thresh);
             contPar_all.push_back(controlParam);
+            
+            cntrlCost += 0.5*controlParam*controlParam*dt; 
+            noiseCost += 0.5*( eta_x*eta_x + eta_y*eta_y )*dt;
+            
             if( nPaths == 1){
                 tCurrOut << t << endl;
                 dist2BndryOut << dist2Boundary << endl;
@@ -178,21 +180,21 @@ double parallelPathSolver::computeDist2Boundary(double x, double y){
 double parallelPathSolver::computeControlParam(double dist2Boundary, double gyre_width, double t_des, double t_current, double dR_A, double dR_B, double t_thresh, double lambda_thresh){
 
     double s = gyre_width/2;
-    double lambda_s = 0.85;
-    double lambda_t = 15/16.0;  // (1-lambda) is the fraction of time the final transit takes to go from  lambda_s*s to boundary
+    //double lambda_s = 0.2;
+    //double lambda_t = 2;  // (1-lambda) is the fraction of time the final transit takes to go from  lambda_s*s to boundary
     double dR_ratio = 400;
-    if ( dist2Boundary > lambda_s*s && t_current < lambda_t*t_des )
+    if ( dist2Boundary > lambda_s*s && t_current < (1-lambda_t)*t_des )
         return 0.0;
-    if ( dist2Boundary < lambda_s*s && t_current > lambda_t*t_des )
+    if ( dist2Boundary < lambda_s*s && t_current > (1-lambda_t)*t_des )
         return c_max;//0.0;
-    if ( dist2Boundary >= lambda_s*s && t_current >= lambda_t*t_des ){
-        if( t_des < 30)   
+    if ( dist2Boundary >= lambda_s*s && t_current >= (1-lambda_t)*t_des ){
+        //if( t_des < 30)   
             return c_max;
-        else
-            return 0.0;
+        //else
+        //    return 0.0;
     }
     else{ // dist < g_w/8 && t_cur < lambda*t_des
-        double predicted_t_4_esc = t_current/( 1 - (1-lambda_t)*dist2Boundary/(lambda_s*s) );
+        double predicted_t_4_esc = t_current/( 1 - (lambda_t)*dist2Boundary/(lambda_s*s) );
         //double predicted_t_4_esc = ( lambda_thresh*t_current - lambda_s*t_thresh)/(lambda_thresh - lambda_s);
         if (predicted_t_4_esc > t_des)
             return 0.0;
